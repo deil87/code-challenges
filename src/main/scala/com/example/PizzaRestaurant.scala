@@ -21,7 +21,7 @@ object PizzaRestaurant extends App {
 
   println("Times: " + customersMeta.map(cm => cm.id + ":" + cm.arrivalTime.toString).mkString(", "))
   def calculateMinSumOfWaitingTime(currentCustomer: CustomersMeta, restCustomers: List[CustomersMeta]): Int = restCustomers match {
-    case Nil => currentCustomer.orderEstimate
+    case Nil => currentCustomer.orderEstimate + currentCustomer.waitingTime
     case rc => {
       val customersArrivedDuringCurrent = restCustomers.takeWhile(_.arrivalTime <= currentCustomer.arrivalTime + currentCustomer.orderEstimate)
       println(s"Customers arrived during serving pizza for ${currentCustomer.id}: ${customersArrivedDuringCurrent.mkString(",")}")
@@ -33,7 +33,7 @@ object PizzaRestaurant extends App {
       }
       def waitingTimeOfNext =
         calculateMinSumOfWaitingTime(bestNext, restCustomers.diff(List(bestNext)).map(c => c.copy(waitingTime = c.waitingTime + bestNext.orderEstimate)))
-      currentCustomer.orderEstimate + waitingTimeOfNext // Maybe diff is not that efficient; Is this sorted?
+      currentCustomer.orderEstimate + currentCustomer.waitingTime + waitingTimeOfNext // Maybe diff is not that efficient; Is this sorted?
     }
   }
 
