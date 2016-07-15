@@ -7,7 +7,7 @@ import scala.util.Random
 object PizzaRestaurant extends App {
   val system = ActorSystem("PizzaRestaurantSystem")
 
-  val numberOfCustomers = 5
+  val numberOfCustomers = 10
 
   val customersMeta = (1 to numberOfCustomers)
     .map(i => CustomersMeta(i, Random.nextInt(100), orderEstimate = Random.nextInt(8) + 2))
@@ -19,12 +19,12 @@ object PizzaRestaurant extends App {
 
   val customersMetaPredef1 = List(CustomersMeta(1, 0, 3), CustomersMeta(2, 1, 9), CustomersMeta(3, 2, 6))
 
-  //Take the first one
-
+  println("Times: " + customersMeta.map(cm => cm.id + ":" + cm.arrivalTime.toString).mkString(", "))
   def calculateMinSumOfWaitingTime(currentCustomer: CustomersMeta, restCustomers: List[CustomersMeta]): Int = restCustomers match {
     case Nil => currentCustomer.orderEstimate
     case rc => {
       val customersArrivedDuringCurrent = restCustomers.takeWhile(_.arrivalTime <= currentCustomer.arrivalTime + currentCustomer.orderEstimate)
+      println(s"Customers arrived during serving pizza for ${currentCustomer.id}: ${customersArrivedDuringCurrent.mkString(",")}")
       val bestNext = customersArrivedDuringCurrent match {
         case Nil => restCustomers.head
         case ca => ca.permutations.toList.map {
@@ -32,18 +32,18 @@ object PizzaRestaurant extends App {
         }.sortBy(_._2).head._1
       }
       def waitingTimeOfNext =
-        calculateMinSumOfWaitingTime(bestNext, restCustomers.diff(List(bestNext)).map(c => c.copy(orderEstimate = c.orderEstimate + bestNext.orderEstimate)))
+        calculateMinSumOfWaitingTime(bestNext, restCustomers.diff(List(bestNext)).map(c => c.copy(waitingTime = c.waitingTime + bestNext.orderEstimate)))
       currentCustomer.orderEstimate + waitingTimeOfNext // Maybe diff is not that efficient; Is this sorted?
     }
   }
 
 
 
-  /*val minSum = calculateMinSumOfWaitingTime(customersMeta.head, customersMeta.tail)
+  val minSum = calculateMinSumOfWaitingTime(customersMeta.head, customersMeta.tail)
 
   println(s"Min sum of waiting time is: $minSum")
 
-  println(s"Min avg of waiting time is: ${minSum / customersMeta.length}")*/
+  println(s"Min avg of waiting time is: ${minSum / customersMeta.length}")
 
   val minSumPredef1 = calculateMinSumOfWaitingTime(customersMetaPredef1.head, customersMetaPredef1.tail)
 
@@ -54,4 +54,4 @@ object PizzaRestaurant extends App {
   system.awaitTermination()
 }
 
-case class CustomersMeta(id: Int, arrivalTime: Int, orderEstimate: Int)
+case class CustomersMeta(id: Int, arrivalTime: Int, orderEstimate: Int, waitingTime: Int = 0)
