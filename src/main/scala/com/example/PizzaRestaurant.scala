@@ -101,17 +101,26 @@ object PizzaRestaurant extends App {
               else alreadyAwaitingCustomersOrderedByOrderEstimate ::: startingAwaitOrdByOrderEstimate.diff(List(bestNext))
             val finishTimeBest = System.nanoTime()
             total2 = total2 + (finishTimeBest - startTimeBest)
-            tmp2.map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
+            tmp2.foreach(c => {
+              c.waitingTime = c.waitingTime + waitingDelta - c.arrivalTime // save 5 sec on 10^7
+            })
+            tmp2
           },
           alreadyAwaitingCustomersOrderedByOrderAwaiting = {
-            val startTimeBest = System.nanoTime()
 
+            val startTimeBest = System.nanoTime()
             val tmp3 =
               if(where == 0) alreadyAwaitingCustomersOrderedByOrderAwaiting.diff(List(bestNext)) ::: startingAwaitOrdByOrderAwaiting
               else alreadyAwaitingCustomersOrderedByOrderAwaiting ::: startingAwaitOrdByOrderAwaiting.diff(List(bestNext))
+
+
             val finishTimeBest = System.nanoTime()
             total3 = total3 + (finishTimeBest - startTimeBest)
-            tmp3.map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
+            tmp3.foreach(c => {
+              c.waitingTime  = c.waitingTime + waitingDelta - c.arrivalTime
+            })//.map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
+
+            tmp3
           },
           restCustomers = futureCustomers,//.diff(List(bestNext)), //Rare case when we are finishing - futureCustomers.head
           accumulatorOfAllWaitingTimes = accumulatorOfAllWaitingTimes + currentWaitingTime)
@@ -171,4 +180,4 @@ object PizzaRestaurant extends App {
   system.shutdown()
 }
 
-case class CustomersMeta(arrivalTime: Int, orderEstimate: Int, waitingTime: Int = 0)
+case class CustomersMeta(arrivalTime: Int, orderEstimate: Int, var waitingTime: Int = 0)
