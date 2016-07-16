@@ -11,17 +11,19 @@ object PizzaRestaurant extends App {
   val numberOfCustomers = 100000 // Really popular restaurant!
 
   val customersMeta = (0 until numberOfCustomers)
-    .map(i => CustomersMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
+    .map(i => CustomersMeta( randomArrivalTime, orderEstimate = randomPizzaTimeCost))
     .sortBy(_.arrivalTime).toList
 
   // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
-  def randomPizzaTimeCost: Int = {
-    Random.nextInt(100) + 1
-  }
-
   def randomArrivalTime: Int = {
     Random.nextInt(1000000001)
   }
+
+  def randomPizzaTimeCost: Int = {
+    Random.nextInt(1000000000) + 1
+  }
+
+
 
   val tieuActor = system.actorOf(TieuActor.props, "tieuActor")
 
@@ -36,8 +38,8 @@ object PizzaRestaurant extends App {
 //    println(s"Serving $currentCustomer ...")
     val withCurrentTotalServedTime = currentCustomer.orderEstimate.toLong + totalServedTime
     val currentWaitingTime =
-      if (currentCustomer.arrivalTime.toLong > totalServedTime) currentCustomer.orderEstimate.toLong
-      else withCurrentTotalServedTime - currentCustomer.arrivalTime
+      if (currentCustomer.arrivalTime.toLong > totalServedTime) currentCustomer.orderEstimate.toLong + currentCustomer.waitingTime // ??currentCustomer.waitingTime
+      else withCurrentTotalServedTime - currentCustomer.arrivalTime // ?? + currentCustomer.waitingTime
 
 //    println(accumulatorOfAllWaitingTimes)
 
@@ -97,4 +99,4 @@ object PizzaRestaurant extends App {
   system.shutdown()
 }
 
-case class CustomersMeta(id: Int, arrivalTime: Int, orderEstimate: Int, waitingTime: Int = 0)
+case class CustomersMeta(arrivalTime: Int, orderEstimate: Int, waitingTime: Int = 0)
