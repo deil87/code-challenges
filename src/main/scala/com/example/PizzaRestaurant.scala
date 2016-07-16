@@ -39,7 +39,10 @@ object PizzaRestaurant extends App {
         val bestNext = customersArrivedDuringCurrent match {
           case Nil => restCustomers.head
           case ca =>
+            val startTime = System.nanoTime()
             val withMinOrderEstimateImpactToOthers = ca.minBy(_.orderEstimate)
+            val finishTime = System.nanoTime()
+            println(s"Calculation of withMinOrderEstimateImpactToOthers took ${(finishTime - startTime).toDouble / 1000} ")
             val withCurrentMaxWaitingTime = ca.maxBy(_.waitingTime)
             if((withMinOrderEstimateImpactToOthers.waitingTime + withMinOrderEstimateImpactToOthers.orderEstimate * (ca.length - 1))  < withCurrentMaxWaitingTime.waitingTime + withCurrentMaxWaitingTime.orderEstimate * (ca.length - 1))
               {
