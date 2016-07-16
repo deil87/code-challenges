@@ -20,7 +20,7 @@ object PizzaRestaurant extends App {
   }
 
   def randomPizzaTimeCost: Int = {
-    Random.nextInt(5000000) + 1
+    Random.nextInt(100000000) + 1
   }
 
 
@@ -65,51 +65,27 @@ object PizzaRestaurant extends App {
 
         val startingAwaitOrdByOrderEstimate = startingAwaitCustomers.sortBy(_.orderEstimate)
         val startingAwaitOrdByOrderAwaiting = startingAwaitCustomers.sortBy(_.waitingTime)
-        val customersAwaitingServingOrdByOrderEstimate = alreadyAwaitingCustomersOrderedByOrderEstimate ::: startingAwaitOrdByOrderEstimate // Merge properly
-        val customersAwaitingServingOrdByOrderAwaiting = alreadyAwaitingCustomersOrderedByOrderAwaiting ::: startingAwaitOrdByOrderAwaiting
 
+    val (bestNext, where) =
+      if (alreadyAwaitingCustomersOrderedByOrderEstimate.isEmpty && startingAwaitOrdByOrderEstimate.isEmpty)
+        (futureCustomers.head, 2) //
+      else {
+        val startTime = System.nanoTime()
+        val withMinOrderEstimateImpactToOthers = getBestFrom(alreadyAwaitingCustomersOrderedByOrderEstimate, startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
 
-    val bestNext = customersAwaitingServingOrdByOrderEstimate match {
-          case Nil => futureCustomers.head
-          case ca =>
-            val startTime = System.nanoTime()
-            val minFromAlreadySortedByEstimate = alreadyAwaitingCustomersOrderedByOrderEstimate.headOption
-            val minFromStartingAwaitSortedByEstimate = startingAwaitOrdByOrderEstimate.headOption
-            val withMinOrderEstimateImpactToOthers =
-              if(minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isDefined)
-                if (minFromAlreadySortedByEstimate.get.orderEstimate < minFromStartingAwaitSortedByEstimate.get.orderEstimate)
-                  minFromAlreadySortedByEstimate.get
-                else minFromStartingAwaitSortedByEstimate.get
-              else if (minFromAlreadySortedByEstimate.isEmpty && minFromStartingAwaitSortedByEstimate.isDefined)
-                minFromStartingAwaitSortedByEstimate.get
-              else if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isEmpty)
-                minFromAlreadySortedByEstimate.get
-              else throw new IllegalStateException("How do we get here?")
+        val withCurrentMaxWaitingTime = getBestFrom(alreadyAwaitingCustomersOrderedByOrderAwaiting, startingAwaitOrdByOrderAwaiting, _.waitingTime > _.waitingTime)
 
-            val maxFromAlreadySortedByAwaiting = alreadyAwaitingCustomersOrderedByOrderAwaiting.headOption
-            val maxFromStartingAwaitSortedByAwaiting = startingAwaitOrdByOrderAwaiting.headOption
-            val withCurrentMaxWaitingTime =
-              if(maxFromAlreadySortedByAwaiting.isDefined && maxFromStartingAwaitSortedByAwaiting.isDefined)
-              if (maxFromAlreadySortedByAwaiting.get.waitingTime > maxFromStartingAwaitSortedByAwaiting.get.waitingTime)
-                maxFromAlreadySortedByAwaiting.get
-              else maxFromStartingAwaitSortedByAwaiting.get
-            else if (maxFromAlreadySortedByAwaiting.isEmpty && maxFromStartingAwaitSortedByAwaiting.isDefined)
-                maxFromStartingAwaitSortedByAwaiting.get
-            else if (maxFromAlreadySortedByAwaiting.isDefined && maxFromStartingAwaitSortedByAwaiting.isEmpty)
-                maxFromAlreadySortedByAwaiting.get
-            else throw new IllegalStateException("How do we get here?")
+        val finishTime = System.nanoTime()
+        totalMinWaiting = totalMinWaiting + (finishTime - startTime)
 
-            val finishTime = System.nanoTime()
-            totalMinWaiting = totalMinWaiting + (finishTime - startTime)
-
-            val amountOfWaitingCustomers = ca.length - 1
-            if ((withMinOrderEstimateImpactToOthers.waitingTime + withMinOrderEstimateImpactToOthers.orderEstimate * amountOfWaitingCustomers) < withCurrentMaxWaitingTime.waitingTime + withCurrentMaxWaitingTime.orderEstimate * amountOfWaitingCustomers) {
-              withMinOrderEstimateImpactToOthers
-            }
-            else {
-              withCurrentMaxWaitingTime
-            }
+        val amountOfWaitingCustomers = alreadyAwaitingCustomersOrderedByOrderEstimate.length + startingAwaitOrdByOrderEstimate.length  - 1
+        if ((withMinOrderEstimateImpactToOthers._1.waitingTime + withMinOrderEstimateImpactToOthers._1.orderEstimate * amountOfWaitingCustomers) < withCurrentMaxWaitingTime._1.waitingTime + withCurrentMaxWaitingTime._1.orderEstimate * amountOfWaitingCustomers) {
+          withMinOrderEstimateImpactToOthers
         }
+        else {
+          withCurrentMaxWaitingTime
+        }
+      }
         val finishTimeBest = System.nanoTime()
         totalBest = totalBest + (finishTimeBest - startTimeBest)
 
@@ -120,7 +96,9 @@ object PizzaRestaurant extends App {
           alreadyAwaitingCustomersOrderedByOrderEstimate = {
             val startTimeBest = System.nanoTime()
 
-            val tmp2 = customersAwaitingServingOrdByOrderEstimate.diff(List(bestNext))
+            val tmp2 =
+              if(where == 0) alreadyAwaitingCustomersOrderedByOrderEstimate.diff(List(bestNext)) ::: startingAwaitOrdByOrderEstimate
+              else alreadyAwaitingCustomersOrderedByOrderEstimate ::: startingAwaitOrdByOrderEstimate.diff(List(bestNext))
             val finishTimeBest = System.nanoTime()
             total2 = total2 + (finishTimeBest - startTimeBest)
             tmp2.map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
@@ -128,16 +106,44 @@ object PizzaRestaurant extends App {
           alreadyAwaitingCustomersOrderedByOrderAwaiting = {
             val startTimeBest = System.nanoTime()
 
-            val tmp3 = customersAwaitingServingOrdByOrderAwaiting.diff(List(bestNext)).map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
+            val tmp3 =
+              if(where == 0) alreadyAwaitingCustomersOrderedByOrderAwaiting.diff(List(bestNext)) ::: startingAwaitOrdByOrderAwaiting
+              else alreadyAwaitingCustomersOrderedByOrderAwaiting ::: startingAwaitOrdByOrderAwaiting.diff(List(bestNext))
             val finishTimeBest = System.nanoTime()
             total3 = total3 + (finishTimeBest - startTimeBest)
-            tmp3
+            tmp3.map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
           },
-          restCustomers = futureCustomers,
+          restCustomers = futureCustomers,//.diff(List(bestNext)), //Rare case when we are finishing - futureCustomers.head
           accumulatorOfAllWaitingTimes = accumulatorOfAllWaitingTimes + currentWaitingTime)
     }
 
 }
+
+  private def getBestFrom(alreadyAwaiting : List[CustomersMeta], startingAwait : List[CustomersMeta], fun: (CustomersMeta,CustomersMeta) => Boolean): (CustomersMeta, Int) = {
+    val minFromAlreadySortedByEstimate = alreadyAwaiting.headOption
+    val minFromStartingAwaitSortedByEstimate = startingAwait.headOption
+
+      if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isDefined)
+        if (fun(minFromAlreadySortedByEstimate.get,minFromStartingAwaitSortedByEstimate.get))
+          (minFromAlreadySortedByEstimate.get, 0)
+        else (minFromStartingAwaitSortedByEstimate.get, 1)
+      else if (minFromAlreadySortedByEstimate.isEmpty && minFromStartingAwaitSortedByEstimate.isDefined)
+        (minFromStartingAwaitSortedByEstimate.get, 1)
+      else if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isEmpty)
+        (minFromAlreadySortedByEstimate.get, 0)
+      else throw new IllegalStateException("How do we get here?")
+  }
+
+  private def merge(xs : List[CustomersMeta], ys : List[CustomersMeta], fun: (CustomersMeta,CustomersMeta) => Boolean) : List[CustomersMeta] = {
+    (xs, ys) match{
+      case (Nil, Nil) => Nil
+      case (Nil, ys) => ys
+      case (xs, Nil) => xs
+      case (x :: xs1, y :: ys1) =>
+        if(fun(x,y)) x :: merge(xs1, ys, fun)
+        else y :: merge(xs, ys1, fun)
+    }
+  }
 
 
   private val firstCustomer: CustomersMeta = customersMeta.head
