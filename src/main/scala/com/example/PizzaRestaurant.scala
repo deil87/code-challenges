@@ -23,13 +23,15 @@ object PizzaRestaurant extends App {
 
 //  println("Times: " + customersMeta.map(cm => cm.id + ":" + cm.arrivalTime.toString).mkString(", "))
   @tailrec
-  private def calculateMinSumOfWaitingTime(served: List[CustomersMeta], currentCustomer: CustomersMeta, restCustomers: List[CustomersMeta], accumulator: Int = 0): Int = {
+  private def calculateMinSumOfWaitingTime(totalServedTime: Long, currentCustomer: CustomersMeta, restCustomers: List[CustomersMeta], accumulatorOfAllWaitingTimes: Long = 0): Long = {
     println(s"Serving $currentCustomer ...")
-    val servedWithCurrent = currentCustomer :: served
-    restCustomers match {
+    val withCurrentTotalServedTime = currentCustomer.orderEstimate + totalServedTime
+    val currentWaitingTime = withCurrentTotalServedTime - currentCustomer.arrivalTime
+
+  restCustomers match {
       case Nil => {
         println(s"Serving last customer $currentCustomer")
-        accumulator + (servedWithCurrent.foldLeft(0)((res, next) => res + next.orderEstimate) - currentCustomer.arrivalTime)
+        accumulatorOfAllWaitingTimes + currentWaitingTime
       }
       case rc =>
         val (customersArrivedDuringCurrent, futureCustomers) = restCustomers.partition(_.arrivalTime <= currentCustomer.arrivalTime + currentCustomer.orderEstimate)
@@ -49,16 +51,20 @@ object PizzaRestaurant extends App {
               withCurrentMaxWaitingTime
             }
         }
-        val currentWaitingTime = servedWithCurrent.foldLeft(0)((res, next) => res + next.orderEstimate) - currentCustomer.arrivalTime
         println(s"Waiting time of $currentCustomer : $currentWaitingTime")
-        calculateMinSumOfWaitingTime(servedWithCurrent, bestNext, customersArrivedDuringCurrent.diff(List(bestNext)).map(c => c.copy(waitingTime = c.waitingTime + bestNext.orderEstimate + (currentCustomer.orderEstimate - (c.arrivalTime - currentCustomer.arrivalTime)))) ::: futureCustomers,
-          accumulator = accumulator + currentWaitingTime)
+        calculateMinSumOfWaitingTime(withCurrentTotalServedTime, bestNext,
+          customersArrivedDuringCurrent.diff(List(bestNext)).map(c => c.copy(waitingTime = c.waitingTime + bestNext.orderEstimate + (currentCustomer.orderEstimate - (c.arrivalTime - currentCustomer.arrivalTime)))) ::: futureCustomers,
+          accumulatorOfAllWaitingTimes = accumulatorOfAllWaitingTimes + currentWaitingTime)
     }
   }
 
 
   private val firstCustomer: CustomersMeta = customersMeta.head
-  val minSum = calculateMinSumOfWaitingTime(Nil, firstCustomer, customersMeta.tail)
+  val startTime = System.nanoTime()
+  val minSum = calculateMinSumOfWaitingTime(0L, firstCustomer, customersMeta.tail)
+  val finishTime = System.nanoTime()
+
+  println(s"Calculation of average took ${(finishTime - startTime).toDouble / 1000000000} ")
 
   println(s"Min sum of waiting time is: $minSum")
 
