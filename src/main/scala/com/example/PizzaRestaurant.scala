@@ -9,11 +9,19 @@ object PizzaRestaurant extends App {
   val system = ActorSystem("PizzaRestaurantSystem")
 
   val numberOfCustomers = 100000 // Really popular restaurant!
-  val maxPermutationsThreshold = 20
 
-  val customersMeta = (0 to numberOfCustomers)
-    .map(i => CustomersMeta(i, i, orderEstimate = Random.nextInt(8) + 2))
+  val customersMeta = (0 until numberOfCustomers)
+    .map(i => CustomersMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
     .sortBy(_.arrivalTime).toList
+
+  // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
+  def randomPizzaTimeCost: Int = {
+    Random.nextInt(100) + 1
+  }
+
+  def randomArrivalTime: Int = {
+    Random.nextInt(1000000001)
+  }
 
   val tieuActor = system.actorOf(TieuActor.props, "tieuActor")
 
@@ -24,10 +32,14 @@ object PizzaRestaurant extends App {
   var totalMinWaiting = 0L
 //  println("Times: " + customersMeta.map(cm => cm.id + ":" + cm.arrivalTime.toString).mkString(", "))
   @tailrec
-  private def calculateMinSumOfWaitingTime(totalServedTime: Long, currentCustomer: CustomersMeta, restCustomers: List[CustomersMeta], accumulatorOfAllWaitingTimes: Long = 0): Long = {
+  private def calculateMinSumOfWaitingTime(totalServedTime: Long, currentCustomer: CustomersMeta, restCustomers: List[CustomersMeta], accumulatorOfAllWaitingTimes: Long = 0L): Long = {
 //    println(s"Serving $currentCustomer ...")
-    val withCurrentTotalServedTime = currentCustomer.orderEstimate + totalServedTime
-    val currentWaitingTime = withCurrentTotalServedTime - currentCustomer.arrivalTime
+    val withCurrentTotalServedTime = currentCustomer.orderEstimate.toLong + totalServedTime
+    val currentWaitingTime =
+      if (currentCustomer.arrivalTime.toLong > totalServedTime) currentCustomer.orderEstimate.toLong
+      else withCurrentTotalServedTime - currentCustomer.arrivalTime
+
+//    println(accumulatorOfAllWaitingTimes)
 
   restCustomers match {
       case Nil =>
@@ -71,7 +83,7 @@ object PizzaRestaurant extends App {
   val finishTime = System.nanoTime()
 
   println(s"Calculation of average took ${(finishTime - startTime).toDouble / 1000000000} ")
-  println(s"Calculation of totalMinWaiting took ${(totalMinWaiting).toDouble / 1000000000} ")
+  println(s"Calculation of totalMinWaiting took ${totalMinWaiting.toDouble / 1000000000} ")
 
   println(s"Min sum of waiting time is: $minSum")
 
