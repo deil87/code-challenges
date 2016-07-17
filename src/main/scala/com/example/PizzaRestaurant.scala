@@ -20,7 +20,7 @@ object PizzaRestaurant extends App {
   }
 
   def randomPizzaTimeCost: Int = {
-    Random.nextInt(500000000) + 1
+    Random.nextInt(5000000) + 1
   }
 
 
@@ -59,6 +59,7 @@ object PizzaRestaurant extends App {
   else {
 
         val startingAwaitCustomers = restCustomers.takeWhile(_.arrivalTime <= currentCustomer.arrivalTime + currentCustomer.orderEstimate)
+
         val  futureCustomers = restCustomers.drop(startingAwaitCustomers.length)
 
         val startTimeBest = System.nanoTime()
@@ -96,31 +97,43 @@ object PizzaRestaurant extends App {
           alreadyAwaitingCustomersOrderedByOrderEstimate = {
             val startTimeBest = System.nanoTime()
 
+            alreadyAwaitingCustomersOrderedByOrderEstimate.foreach(c => {
+              c.waitingTime = c.waitingTime + bestNext.orderEstimate
+            })
+            startingAwaitOrdByOrderEstimate.foreach(c => {
+              val delta = waitingDelta - c.arrivalTime
+              c.waitingTime = c.waitingTime + delta
+            })
             val tmp2 =
-
 //              Сделать нормальный мердж и не сортировать элементы  startingAwaitOrdByOrderEstimate
-              if(where == 0) merge(removeElemFrom(alreadyAwaitingCustomersOrderedByOrderEstimate,bestNext), startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
-              else merge(alreadyAwaitingCustomersOrderedByOrderEstimate, removeElemFrom(startingAwaitOrdByOrderEstimate,bestNext), _.orderEstimate < _.orderEstimate)
+              if(where == 0) {
+                val from: List[CustomersMeta] = removeElemFrom(alreadyAwaitingCustomersOrderedByOrderEstimate, bestNext)
+                merge(from, startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
+              }
+              else {
+                val from2: List[CustomersMeta] = removeElemFrom(startingAwaitOrdByOrderEstimate, bestNext)
+                merge(alreadyAwaitingCustomersOrderedByOrderEstimate, from2, _.orderEstimate < _.orderEstimate)
+              }
             val finishTimeBest = System.nanoTime()
             total2 = total2 + (finishTimeBest - startTimeBest)
-            tmp2.foreach(c => {
-              c.waitingTime = c.waitingTime + waitingDelta - c.arrivalTime // save 5 sec on 10^7
-            })
             tmp2
           },
           alreadyAwaitingCustomersOrderedByOrderAwaiting = {
 
             val startTimeBest = System.nanoTime()
+            alreadyAwaitingCustomersOrderedByOrderAwaiting.foreach(c => {
+              c.waitingTime = c.waitingTime + bestNext.orderEstimate
+            })
+            startingAwaitOrdByOrderAwaiting.foreach(c => {
+              val delta = waitingDelta - c.arrivalTime
+              c.waitingTime = c.waitingTime + delta
+            })
             val tmp3 = // Insertion Merge!   И подумать над тем что не надо сортировать startAwaing так как там нулы
               if(where == 0) merge(removeElemFrom(alreadyAwaitingCustomersOrderedByOrderAwaiting,bestNext), startingAwaitOrdByOrderAwaiting, _.waitingTime > _.waitingTime )
               else merge(alreadyAwaitingCustomersOrderedByOrderAwaiting, removeElemFrom(startingAwaitOrdByOrderAwaiting,bestNext), _.waitingTime > _.waitingTime)
 
-
             val finishTimeBest = System.nanoTime()
             total3 = total3 + (finishTimeBest - startTimeBest)
-            tmp3.foreach(c => {
-              c.waitingTime  = c.waitingTime + waitingDelta - c.arrivalTime
-            })
 
             tmp3
           },
@@ -160,10 +173,11 @@ object PizzaRestaurant extends App {
     def loop(source: List[CustomersMeta], acc: List[CustomersMeta]): List[CustomersMeta] = source match {
       case Nil => acc
       case head::tail =>
-        if(head.id == elem.id) acc ::: tail
+        if(head.id == elem.id) acc.reverse ::: tail
         else loop(tail, head::acc)
     }
-    loop(xs, Nil)
+    val res = loop(xs, Nil)
+    res
   }
 
 
