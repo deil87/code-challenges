@@ -36,7 +36,8 @@ object PizzaRestaurant extends App {
   var totalTimeWaiting = 0L
   var totalBest = 0L
   var total2 = 0L
-  var total3 = 0L
+  var total3  = 0L
+  var totalRemove2  = 0L
 //  println("Times: " + customersMeta.map(cm => cm.id + ":" + cm.arrivalTime.toString).mkString(", "))
   @tailrec
   private def calculateMinSumOfWaitingTime(totalServedTime: Long,
@@ -107,11 +108,17 @@ object PizzaRestaurant extends App {
             val tmp2 =
 //              Сделать нормальный мердж и не сортировать элементы  startingAwaitOrdByOrderEstimate
               if(where == 0) {
+                val startTimeRemove = System.nanoTime()
                 val from: List[CustomersMeta] = removeElemFrom(alreadyAwaitingCustomersOrderedByOrderEstimate, bestNext)
+                val finishTimeRemove = System.nanoTime()
+                totalRemove2 = totalRemove2 + (finishTimeRemove - startTimeRemove)
                 merge(from, startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
               }
               else {
+                val startTimeRemove = System.nanoTime()
                 val from2: List[CustomersMeta] = removeElemFrom(startingAwaitOrdByOrderEstimate, bestNext)
+                val finishTimeRemove = System.nanoTime()
+                totalRemove2 = totalRemove2 + (finishTimeRemove - startTimeRemove)
                 merge(alreadyAwaitingCustomersOrderedByOrderEstimate, from2, _.orderEstimate < _.orderEstimate)
               }
             val finishTimeBest = System.nanoTime()
@@ -176,8 +183,7 @@ object PizzaRestaurant extends App {
         if(head.id == elem.id) acc.reverse ::: tail
         else loop(tail, head::acc)
     }
-    val res = loop(xs, Nil)
-    res
+    loop(xs, Nil)
   }
 
 
@@ -192,6 +198,7 @@ object PizzaRestaurant extends App {
   println(s"Calculation of totalTimeWaiting took ${totalTimeWaiting.toDouble / 1000000000} ")
   println(s"Calculation of totalBest took ${totalBest.toDouble / 1000000000} ")
   println(s"Calculation of total2 took ${total2.toDouble / 1000000000} ")
+  println(s"Calculation of totalRemove2 took ${totalRemove2.toDouble / 1000000000} ")
   println(s"Calculation of total3 took ${total3.toDouble / 1000000000} ")
 
   println(s"Min sum of waiting time is: $minSum")
