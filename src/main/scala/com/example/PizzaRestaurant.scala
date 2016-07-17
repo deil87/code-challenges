@@ -20,7 +20,7 @@ object PizzaRestaurant extends App {
   }
 
   def randomPizzaTimeCost: Int = {
-    Random.nextInt(1000000000) + 1
+    Random.nextInt(500000000) + 1
   }
 
 
@@ -64,7 +64,7 @@ object PizzaRestaurant extends App {
         val startTimeBest = System.nanoTime()
 
         val startingAwaitOrdByOrderEstimate = startingAwaitCustomers.sortBy(_.orderEstimate)
-        val startingAwaitOrdByOrderAwaiting = startingAwaitCustomers.sortBy(_.waitingTime)
+        val startingAwaitOrdByOrderAwaiting = startingAwaitCustomers
 
     val (bestNext, where) =
       if (alreadyAwaitingCustomersOrderedByOrderEstimate.isEmpty && startingAwaitOrdByOrderEstimate.isEmpty)
@@ -97,8 +97,10 @@ object PizzaRestaurant extends App {
             val startTimeBest = System.nanoTime()
 
             val tmp2 =
-              if(where == 0) removeElemFrom(alreadyAwaitingCustomersOrderedByOrderEstimate,bestNext) ::: startingAwaitOrdByOrderEstimate
-              else alreadyAwaitingCustomersOrderedByOrderEstimate ::: removeElemFrom(startingAwaitOrdByOrderEstimate,bestNext)
+
+//              Сделать нормальный мердж и не сортировать элементы  startingAwaitOrdByOrderEstimate
+              if(where == 0) merge(removeElemFrom(alreadyAwaitingCustomersOrderedByOrderEstimate,bestNext), startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
+              else merge(alreadyAwaitingCustomersOrderedByOrderEstimate, removeElemFrom(startingAwaitOrdByOrderEstimate,bestNext), _.orderEstimate < _.orderEstimate)
             val finishTimeBest = System.nanoTime()
             total2 = total2 + (finishTimeBest - startTimeBest)
             tmp2.foreach(c => {
@@ -109,9 +111,9 @@ object PizzaRestaurant extends App {
           alreadyAwaitingCustomersOrderedByOrderAwaiting = {
 
             val startTimeBest = System.nanoTime()
-            val tmp3 =
-              if(where == 0) removeElemFrom(alreadyAwaitingCustomersOrderedByOrderAwaiting,bestNext) ::: startingAwaitOrdByOrderAwaiting
-              else alreadyAwaitingCustomersOrderedByOrderAwaiting ::: removeElemFrom(startingAwaitOrdByOrderAwaiting,bestNext)
+            val tmp3 = // Insertion Merge!   И подумать над тем что не надо сортировать startAwaing так как там нулы
+              if(where == 0) merge(removeElemFrom(alreadyAwaitingCustomersOrderedByOrderAwaiting,bestNext), startingAwaitOrdByOrderAwaiting, _.waitingTime > _.waitingTime )
+              else merge(alreadyAwaitingCustomersOrderedByOrderAwaiting, removeElemFrom(startingAwaitOrdByOrderAwaiting,bestNext), _.waitingTime > _.waitingTime)
 
 
             val finishTimeBest = System.nanoTime()
