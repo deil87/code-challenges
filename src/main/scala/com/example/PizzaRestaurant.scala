@@ -11,7 +11,7 @@ object PizzaRestaurant extends App {
   val numberOfCustomers = 100000 // Really popular restaurant!
 
   val customersMeta = (0 until numberOfCustomers)
-    .map(i => CustomersMeta( randomArrivalTime, orderEstimate = randomPizzaTimeCost))
+    .map(i => CustomersMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
     .sortBy(_.arrivalTime).toList
 
   // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
@@ -20,7 +20,7 @@ object PizzaRestaurant extends App {
   }
 
   def randomPizzaTimeCost: Int = {
-    Random.nextInt(100000000) + 1
+    Random.nextInt(1000000000) + 1
   }
 
 
@@ -29,7 +29,7 @@ object PizzaRestaurant extends App {
 
 //  customersMeta.foreach(cm => system.actorOf(CustomerActor.props(cm.id, cm.orderEstimate), "customerActor"+ cm.id))
 
-  val customersMetaPredef1 = List(CustomersMeta(0, 3), CustomersMeta(1, 9), CustomersMeta(2, 5))
+  val customersMetaPredef1 = List(CustomersMeta(0,0, 3), CustomersMeta(1,1, 9), CustomersMeta(2,2, 5))
 
   var totalMinWaiting = 0L
   var totalMinWaitingMetas = 0L
@@ -68,7 +68,7 @@ object PizzaRestaurant extends App {
 
     val (bestNext, where) =
       if (alreadyAwaitingCustomersOrderedByOrderEstimate.isEmpty && startingAwaitOrdByOrderEstimate.isEmpty)
-        (futureCustomers.head, 2) //
+        (futureCustomers.head, 2)
       else {
         val startTime = System.nanoTime()
         val withMinOrderEstimateImpactToOthers = getBestFrom(alreadyAwaitingCustomersOrderedByOrderEstimate, startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
@@ -97,8 +97,8 @@ object PizzaRestaurant extends App {
             val startTimeBest = System.nanoTime()
 
             val tmp2 =
-              if(where == 0) alreadyAwaitingCustomersOrderedByOrderEstimate.diff(List(bestNext)) ::: startingAwaitOrdByOrderEstimate
-              else alreadyAwaitingCustomersOrderedByOrderEstimate ::: startingAwaitOrdByOrderEstimate.diff(List(bestNext))
+              if(where == 0) removeElemFrom(alreadyAwaitingCustomersOrderedByOrderEstimate,bestNext) ::: startingAwaitOrdByOrderEstimate
+              else alreadyAwaitingCustomersOrderedByOrderEstimate ::: removeElemFrom(startingAwaitOrdByOrderEstimate,bestNext)
             val finishTimeBest = System.nanoTime()
             total2 = total2 + (finishTimeBest - startTimeBest)
             tmp2.foreach(c => {
@@ -110,15 +110,15 @@ object PizzaRestaurant extends App {
 
             val startTimeBest = System.nanoTime()
             val tmp3 =
-              if(where == 0) alreadyAwaitingCustomersOrderedByOrderAwaiting.diff(List(bestNext)) ::: startingAwaitOrdByOrderAwaiting
-              else alreadyAwaitingCustomersOrderedByOrderAwaiting ::: startingAwaitOrdByOrderAwaiting.diff(List(bestNext))
+              if(where == 0) removeElemFrom(alreadyAwaitingCustomersOrderedByOrderAwaiting,bestNext) ::: startingAwaitOrdByOrderAwaiting
+              else alreadyAwaitingCustomersOrderedByOrderAwaiting ::: removeElemFrom(startingAwaitOrdByOrderAwaiting,bestNext)
 
 
             val finishTimeBest = System.nanoTime()
             total3 = total3 + (finishTimeBest - startTimeBest)
             tmp3.foreach(c => {
               c.waitingTime  = c.waitingTime + waitingDelta - c.arrivalTime
-            })//.map(c => c.copy(waitingTime = c.waitingTime + waitingDelta - c.arrivalTime ))
+            })
 
             tmp3
           },
@@ -154,6 +154,16 @@ object PizzaRestaurant extends App {
     }
   }
 
+  def removeElemFrom(xs : List[CustomersMeta], elem: CustomersMeta): List[CustomersMeta] = {
+    def loop(source: List[CustomersMeta], acc: List[CustomersMeta]): List[CustomersMeta] = source match {
+      case Nil => acc
+      case head::tail =>
+        if(head.id == elem.id) acc ::: tail
+        else loop(tail, head::acc)
+    }
+    loop(xs, Nil)
+  }
+
 
   private val firstCustomer: CustomersMeta = customersMeta.head
   val startTime = System.nanoTime()
@@ -180,4 +190,4 @@ object PizzaRestaurant extends App {
   system.shutdown()
 }
 
-case class CustomersMeta(arrivalTime: Int, orderEstimate: Int, var waitingTime: Int = 0)
+case class CustomersMeta(id: Int, arrivalTime: Int, orderEstimate: Int, var waitingTime: Int = 0)
