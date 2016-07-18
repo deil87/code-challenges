@@ -21,6 +21,17 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
   var totalIndexOf  = 0L
   var totalForeach  = 0L
 
+  def resetTiming()  {
+    totalGetBests = 0L
+    totalGetSize = 0L
+    totalTimeWaiting = 0L
+    totalBest = 0L
+    totalAwaitingConcat = 0L
+    totalMinFinding  = 0L
+    totalIndexOf  = 0L
+    totalForeach  = 0L
+  }
+
   def calculateMinAvgWaitingTime(customerMetas: List[CustomerMeta]): Long = {
     val startTime = System.nanoTime()
 
@@ -123,7 +134,7 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
             val finishForeach = System.nanoTime()
 
             totalForeach = totalForeach + (finishForeach - startForeach)
-            startingAwaitOrdByOrderEstimate.foreach{case (v, cm) =>
+            startingAwaitOrdByOrderEstimate.par.foreach{case (v, cm) =>
               val delta = waitingDelta - cm.arrivalTime
               cm.waitingTime += delta
             }
@@ -165,7 +176,7 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
             val finishForeach = System.nanoTime()
 
             totalForeach = totalForeach + (finishForeach - startForeach)
-            startingAwaitOrdByOrderAwaiting.foreach{case (v, cm) =>
+            startingAwaitOrdByOrderAwaiting.par.foreach{case (v, cm) =>
               val delta = waitingDelta - cm.arrivalTime
               cm.waitingTime += delta
             }
