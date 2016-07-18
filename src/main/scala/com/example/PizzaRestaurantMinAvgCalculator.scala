@@ -8,21 +8,9 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success, Try}
 
-object PizzaRestaurant extends App {
+object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints {
   val system = ActorSystem("PizzaRestaurantSystem")
 
-  val numberOfCustomers = 10000 // Really popular restaurant!
-
-  // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
-  def randomArrivalTime = Random.nextInt(1000000001)
-
-  def randomPizzaTimeCost = Random.nextInt(1000000000) + 1
-
-  val customersMeta = (0 until numberOfCustomers)
-    .map(i => CustomersMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
-    .sortBy(_.arrivalTime).toList
-
-  val customersMetaPredef1 = List(CustomersMeta(0,0, 3), CustomersMeta(1,1, 9), CustomersMeta(2,2, 5))
 
   var totalGetBests = 0L
   var totalGetSize = 0L
@@ -33,12 +21,36 @@ object PizzaRestaurant extends App {
   var totalIndexOf  = 0L
   var totalForeach  = 0L
 
+  def calculateMinAvgWaitingTime(customerMetas: List[CustomerMeta]): Long = {
+    val startTime = System.nanoTime()
+
+    val minSum = calculateMinSumOfWaitingTime(0L, customerMetas.head, new Array[List[(Int, CustomerMeta)]](0), new Array[List[(Int, CustomerMeta)]](0), customerMetas.tail)
+
+    val finishTime = System.nanoTime()
+
+    println(s"Calculation of average took ${(finishTime - startTime).toDouble / 1000000000} ")
+    println(s"Calculation of totalGetBests took ${totalGetBests.toDouble / 1000000000} ")
+    println(s"Calculation of totalGetSize took ${totalGetSize.toDouble / 1000000000} ")
+    println(s"Calculation of totalTimeWaiting took ${totalTimeWaiting.toDouble / 1000000000} ")
+    println(s"Calculation of totalBest took ${totalBest.toDouble / 1000000000} ")
+    println(s"Calculation of totalAwaitingConcat took ${totalAwaitingConcat.toDouble / 1000000000} ")
+    println(s"Calculation of totalIndexOf took ${totalIndexOf.toDouble / 1000000000} ")
+    println(s"Calculation of totalMinFinding took ${totalMinFinding.toDouble / 1000000000} ")
+    println(s"Calculation of totalForeach took ${totalForeach.toDouble / 1000000000} ")
+
+    println(s"Min sum of waiting time is: $minSum")
+
+    val minAverage: Long = minSum / customerMetas.length
+    println(s"Min avg of waiting time is: $minAverage")
+    minAverage
+  }
+
   @tailrec
   private def calculateMinSumOfWaitingTime(totalServedTime: Long,
-                                           currentCustomer: CustomersMeta,
-                                           alreadyAwaitingCustomersOrderedByOrderEstimate: Array[List[(Int, CustomersMeta)]],
-                                           alreadyAwaitingCustomersOrderedByOrderAwaiting: Array[List[(Int, CustomersMeta)]],
-                                           restCustomers: List[CustomersMeta],
+                                           currentCustomer: CustomerMeta,
+                                           alreadyAwaitingCustomersOrderedByOrderEstimate: Array[List[(Int, CustomerMeta)]],
+                                           alreadyAwaitingCustomersOrderedByOrderAwaiting: Array[List[(Int, CustomerMeta)]],
+                                           restCustomers: List[CustomerMeta],
                                            accumulatorOfAllWaitingTimes: Long = 0L,
                                            alreadyAwaitingCustomersCount: Long = 0L): Long = {
 
@@ -67,7 +79,7 @@ object PizzaRestaurant extends App {
 
     val startBest = System.nanoTime()
     val (bestNext, indexOfFragment) =
-      if (startingAwaitOrdByOrderEstimate.isEmpty && alreadyAwaitingCustomersOrderedByOrderEstimate.isEmpty )
+      if (startingAwaitOrdByOrderEstimate.isEmpty && alreadyAwaitingCustomersCount == 0L )
         (futureCustomers.head, -3) // case when we just getting next
       else {
         val startGetBests = System.nanoTime()
@@ -189,8 +201,8 @@ object PizzaRestaurant extends App {
 
 }
 
-  val fragmentsOrdering = new Ordering[List[(Int, CustomersMeta)]] {
-    override def compare(xs: List[(Int, CustomersMeta)], ys: List[(Int, CustomersMeta)]): Int = {
+  val fragmentsOrdering = new Ordering[List[(Int, CustomerMeta)]] {
+    override def compare(xs: List[(Int, CustomerMeta)], ys: List[(Int, CustomerMeta)]): Int = {
       (xs, ys) match {
         case (Nil, Nil) => 0
         case (Nil, ys) => 1 // reversed  if one list is empty then another one is returned
@@ -200,14 +212,16 @@ object PizzaRestaurant extends App {
     }
   }
 
-  private def getBestFrom(alreadyAwaiting : Array[List[(Int, CustomersMeta)]], startingAwait : List[(Int, CustomersMeta)], fun: (CustomersMeta,CustomersMeta) => Boolean): (CustomersMeta, Int) = {
-    // We need our own implementation of `min` which return index as well
+  private def getBestFrom(alreadyAwaiting : Array[List[(Int, CustomerMeta)]], startingAwait : List[(Int, CustomerMeta)], fun: (CustomerMeta,CustomerMeta) => Boolean): (CustomerMeta, Int) = {
+    // Better use our own implementation of `min` which returns index as well
     val startMin = System.nanoTime()
 
     //maybe keep alreadyAwaiting fragments sorted?
     val minFromAlreadySortedByEstimateFragment = Try { alreadyAwaiting.min(fragmentsOrdering) } match {
       case Success(res) => Some(res)
-      case Failure(ex) =>  None
+      case Failure(ex) =>  {
+        None
+      }
     }
     val finishMin = System.nanoTime()
     totalMinFinding = totalMinFinding + (finishMin - startMin)
@@ -226,6 +240,17 @@ object PizzaRestaurant extends App {
       (minFromStartingAwaitSortedByEstimate.get._2, -2)
     else if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isEmpty)
       (minFromAlreadySortedByEstimate.get._2, indexOfMin)
+    else if(minFromAlreadySortedByEstimate.isEmpty && minFromStartingAwaitSortedByEstimate.isEmpty)
+    {
+      val tmp = Try { alreadyAwaiting.min(fragmentsOrdering) } match {
+        case Success(res) => Some(res)
+        case Failure(ex) =>  {
+          val err = ex
+          None
+        }
+      }
+      throw new IllegalStateException("How do we get here?")
+    }
     else {
       throw new IllegalStateException("How do we get here?")
     }
@@ -235,7 +260,7 @@ object PizzaRestaurant extends App {
     res
   }
 
-  private def merge(xs : List[CustomersMeta], ys : List[CustomersMeta], fun: (CustomersMeta,CustomersMeta) => Boolean) : List[CustomersMeta] = {
+  private def merge(xs : List[CustomerMeta], ys : List[CustomerMeta], fun: (CustomerMeta,CustomerMeta) => Boolean) : List[CustomerMeta] = {
     (xs, ys) match{
       case (Nil, Nil) => Nil
       case (Nil, ys) => ys
@@ -246,8 +271,8 @@ object PizzaRestaurant extends App {
     }
   }
 
-  def removeElemFrom(xs : List[(Int, CustomersMeta)], elem: CustomersMeta): List[(Int, CustomersMeta)] = {
-    def loop(source: List[(Int, CustomersMeta)], acc: List[(Int, CustomersMeta)]): List[(Int, CustomersMeta)] = source match {
+  def removeElemFrom(xs : List[(Int, CustomerMeta)], elem: CustomerMeta): List[(Int, CustomerMeta)] = {
+    def loop(source: List[(Int, CustomerMeta)], acc: List[(Int, CustomerMeta)]): List[(Int, CustomerMeta)] = source match {
       case Nil => acc
       case head::tail =>
         if(head._2.id == elem.id) acc.reverse ::: tail
@@ -256,32 +281,7 @@ object PizzaRestaurant extends App {
     loop(xs, Nil)
   }
 
-
-  private val firstCustomer: CustomersMeta = customersMeta.head
-  val startTime = System.nanoTime()
-  val minSum = calculateMinSumOfWaitingTime(0L, firstCustomer, new Array[List[(Int, CustomersMeta)]](0), new Array[List[(Int, CustomersMeta)]](0), customersMeta.tail)
-  val finishTime = System.nanoTime()
-
-  println(s"Calculation of average took ${(finishTime - startTime).toDouble / 1000000000} ")
-  println(s"Calculation of totalGetBests took ${totalGetBests.toDouble / 1000000000} ")
-  println(s"Calculation of totalGetSize took ${totalGetSize.toDouble / 1000000000} ")
-  println(s"Calculation of totalTimeWaiting took ${totalTimeWaiting.toDouble / 1000000000} ")
-  println(s"Calculation of totalBest took ${totalBest.toDouble / 1000000000} ")
-  println(s"Calculation of totalAwaitingConcat took ${totalAwaitingConcat.toDouble / 1000000000} ")
-  println(s"Calculation of totalIndexOf took ${totalIndexOf.toDouble / 1000000000} ")
-  println(s"Calculation of totalMinFinding took ${totalMinFinding.toDouble / 1000000000} ")
-  println(s"Calculation of totalForeach took ${totalForeach.toDouble / 1000000000} ")
-
-  println(s"Min sum of waiting time is: $minSum")
-
-  println(s"Min avg of waiting time is: ${minSum / customersMeta.length}")
-
-  val minSumPredef1 = calculateMinSumOfWaitingTime(0L, customersMetaPredef1.head, new Array[List[(Int, CustomersMeta)]](0), new Array[List[(Int, CustomersMeta)]](0), customersMetaPredef1.tail)
-
-  println(s"==================================\nMin sum of waiting time in customersMetaPredef1 is: $minSumPredef1")
-
-  println(s"Min avg of waiting time in customersMetaPredef1 is: ${minSumPredef1 / customersMetaPredef1.length}")
   system.shutdown()
 }
 
-case class CustomersMeta(id: Int, arrivalTime: Int, orderEstimate: Int, var waitingTime: Int = 0)
+case class CustomerMeta(id: Int, arrivalTime: Int, orderEstimate: Int, var waitingTime: Int = 0)

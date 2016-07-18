@@ -9,7 +9,7 @@ import org.scalatest.Matchers
 import org.scalatest.BeforeAndAfterAll
  
 class PingPongActorSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender
-  with WordSpecLike with Matchers with BeforeAndAfterAll {
+  with WordSpecLike with Matchers with BeforeAndAfterAll with RestaurantConstraints{
  
   def this() = this(ActorSystem("MySpec"))
  
@@ -17,19 +17,20 @@ class PingPongActorSpec(_system: ActorSystem) extends TestKit(_system) with Impl
     TestKit.shutdownActorSystem(system)
   }
  
-  "A Ping actor" must {
-    "send back a ping on a pong" in {
-      val pingActor = system.actorOf(TieuActor.props)
-//      pingActor ! CustomerActor.PongMessage("pong")
-      expectMsg(TieuActor.PingMessage("ping"))
-    }
-  }
+  "PizzaRestaurantMinAvgCalculator" must {
+    /*"calculate average waiting time for example data" in {
+      val customersMetaPredef1 = List(CustomerMeta(0,0, 3), CustomerMeta(1,1, 9), CustomerMeta(2,2, 5))
+      PizzaRestaurantMinAvgCalculator.calculateMinAvgWaitingTime(customersMetaPredef1) === 8
+    }*/
 
-  "A Pong actor" must {
-    "send back a pong on a ping" in {
-//      val pongActor = system.actorOf(CustomerActor.props)
-//      pongActor ! TieuActor.PingMessage("ping")
-//      expectMsg(CustomerActor.PongMessage("pong"))
+    "calculate average waiting time with up to constraints data" in {
+
+      val customerMetas = (0 until numberOfCustomers)
+        .map(i => CustomerMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
+        .sortBy(_.arrivalTime).toList
+
+      assert(PizzaRestaurantMinAvgCalculator.calculateMinAvgWaitingTime(customerMetas) > 0)
+
     }
   }
 
