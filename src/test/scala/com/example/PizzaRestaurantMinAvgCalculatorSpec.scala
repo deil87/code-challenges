@@ -49,7 +49,7 @@ class PizzaRestaurantMinAvgCalculatorSpec(_system: ActorSystem) extends TestKit(
 
     }
 
-    "calculate average waiting time with up to constraints data(debug)" in {
+    /*"calculate average waiting time with up to constraints data(debug)" in {
       PizzaRestaurantMinAvgCalculatorDebug.resetTiming()
       val customerMetas = (0 until numberOfCustomers)
         .map(i => CustomerMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
@@ -60,7 +60,7 @@ class PizzaRestaurantMinAvgCalculatorSpec(_system: ActorSystem) extends TestKit(
       println(s"Min avg of waiting time for up to constraints data(debug version) is: $minAverage")
       assert(minAverage > 0)
 
-    }
+    }*/
   }
 
   override protected def beforeEach(): Unit = {
