@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object PizzaRestaurant extends App {
   val system = ActorSystem("PizzaRestaurantSystem")
 
-  val numberOfCustomers = 40000 // Really popular restaurant!
+  val numberOfCustomers = 100000 // Really popular restaurant!
 
   val customersMeta = (0 until numberOfCustomers)
     .map(i => CustomersMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
@@ -21,11 +21,11 @@ object PizzaRestaurant extends App {
 
   // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
   def randomArrivalTime: Int = {
-    Random.nextInt(100000001)
+    Random.nextInt(1000000001)
   }
 
   def randomPizzaTimeCost: Int = {
-    Random.nextInt(100000000) + 1
+    Random.nextInt(1000000000) + 1
   }
 
   val tieuActor = system.actorOf(TieuActor.props, "tieuActor")
@@ -58,7 +58,7 @@ object PizzaRestaurant extends App {
   val finishTimeWaiting = System.nanoTime()
   totalTimeWaiting = totalTimeWaiting + (finishTimeWaiting - startTimeWaiting)
 
-  if(alreadyAwaitingCustomersCount == 0L && restCustomers.isEmpty /*alreadyAwaitingCustomersOrderedByOrderEstimate.forall(_.isEmpty)*/)
+  if(alreadyAwaitingCustomersCount == 0L && restCustomers.isEmpty)
     accumulatorOfAllWaitingTimes + currentWaitingTime
   else {
     val startingAwaitCustomers = restCustomers.takeWhile(_.arrivalTime <= currentCustomer.arrivalTime + currentCustomer.orderEstimate)
@@ -87,9 +87,6 @@ object PizzaRestaurant extends App {
 
         totalGetBests = totalGetBests + (finishGetBests - startGetBests)
 
-
-
-        //точно ли верна формула-неравенство?
         if ((withMinOrderEstimateImpactToOthers._1.waitingTime + withMinOrderEstimateImpactToOthers._1.orderEstimate * amountOfWaitingCustomersOnNextStep) < withCurrentMaxWaitingTime._1.waitingTime + withCurrentMaxWaitingTime._1.orderEstimate * amountOfWaitingCustomersOnNextStep) {
           withMinOrderEstimateImpactToOthers
         }
@@ -109,14 +106,13 @@ object PizzaRestaurant extends App {
 
             val startForeach = System.nanoTime()
 
-            alreadyAwaitingCustomersOrderedByOrderEstimate.foreach { fs =>
+            val orderEstimate = bestNext.orderEstimate
+
+            alreadyAwaitingCustomersOrderedByOrderEstimate.par.foreach { fs =>
               fs.foreach { case (v, cm) =>
-                cm.waitingTime += bestNext.orderEstimate
+                cm.waitingTime += orderEstimate
               }
             }
-            /*alreadyAwaitingCustomersOrderedByOrderEstimate.reduceLeftOption((res, next) => next ::: res).map{ l => l.foreach {case (v, cm) =>
-              cm.waitingTime = cm.waitingTime + bestNext.orderEstimate
-            }}*/
 
             val finishForeach = System.nanoTime()
 
@@ -153,12 +149,12 @@ object PizzaRestaurant extends App {
 
             val startForeach = System.nanoTime()
 
-            alreadyAwaitingCustomersOrderedByOrderAwaiting.foreach { fs =>
+            val orderEstimate = bestNext.orderEstimate
+            alreadyAwaitingCustomersOrderedByOrderAwaiting.par.foreach { fs =>
               fs.foreach { case (v, cm) =>
-                cm.waitingTime += bestNext.orderEstimate
+                cm.waitingTime += orderEstimate
               }
             }
-
 
             val finishForeach = System.nanoTime()
 
@@ -203,7 +199,7 @@ object PizzaRestaurant extends App {
     override def compare(xs: List[(Int, CustomersMeta)], ys: List[(Int, CustomersMeta)]): Int = {
       (xs, ys) match {
         case (Nil, Nil) => 0
-        case (Nil, ys) => 1 // reversed  if one list is emty to another one is min
+        case (Nil, ys) => 1 // reversed  if one list is empty then another one is returned
         case (xs, Nil) => -1
         case (xs, ys) => Ordering[Int].compare(xs.head._1, ys.head._1)
       }
