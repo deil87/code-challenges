@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
-object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstraints with RestaurantOrderingHelper {
+object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstraints with RestaurantOrderingHelper with MagicNumbers{
   val system = ActorSystem("PizzaRestaurantSystem")
 
 
@@ -88,7 +88,7 @@ object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstrain
     val startBest = System.nanoTime()
     val (bestNext, indexOfFragment) =
       if (startingAwaitOrdByOrderEstimate.isEmpty && alreadyAwaitingCustomersCount == 0L )
-        (futureCustomers.head, -3) // case when we just getting next
+        (futureCustomers.head, pickingUpFromRestCustomersMagicN) // case when we just getting next
       else {
         val startGetBests = System.nanoTime()
         val withMinOrderEstimateImpactToOthers = getBestFrom(alreadyAwaitingCustomersOrderedByOrderEstimate, startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
@@ -146,7 +146,7 @@ object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstrain
                 else
                   alreadyAwaitingCustomersOrderedByOrderEstimate ++ List(startingAwaitOrdByOrderEstimate)
               }
-              else if(indexOfFragment == -2) {
+              else if(indexOfFragment == pickingUpFromStartingAwaitMagicN) {
                 val from2 = removeElemFrom(startingAwaitOrdByOrderEstimate, bestNext)
                 alreadyAwaitingCustomersOrderedByOrderEstimate ++ List(from2)
               } else {
@@ -189,7 +189,7 @@ object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstrain
                 else
                   alreadyAwaitingCustomersOrderedByOrderAwaiting ++ List(startingAwaitOrdByOrderAwaiting)
               }
-              else if(indexOfFragment == -2) {
+              else if(indexOfFragment == pickingUpFromStartingAwaitMagicN) {
                 val from2 = removeElemFrom(startingAwaitOrdByOrderAwaiting, bestNext)
                 alreadyAwaitingCustomersOrderedByOrderAwaiting ++ List(from2)
               } else {
@@ -210,6 +210,14 @@ object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstrain
 }
 
 
+  /**
+    *
+    * @return tuple of best next customer for the min impact on total awaiting time and indexOfFragment;
+    *         indexOfFragment is index of sorted sublist where we have found the bestNext.
+    *         We set it to `-2` in case we picking up from just starting to wait customers.
+    *         We set it to `-3` in case there is no awaiting and we should take next from restCustomers(Nobody is awaiting)
+    *
+    */
   private def getBestFrom(alreadyAwaiting : Array[List[(Int, CustomerMeta)]], startingAwait : List[(Int, CustomerMeta)], fun: (CustomerMeta,CustomerMeta) => Boolean): (CustomerMeta, Int) = {
     // Better use our own implementation of `min` which returns index as well
     val startMin = System.nanoTime()
@@ -233,9 +241,9 @@ object PizzaRestaurantMinAvgCalculatorDebug extends App with RestaurantConstrain
     val res = if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isDefined)
       if (fun(minFromAlreadySortedByEstimate.get._2,minFromStartingAwaitSortedByEstimate.get._2))
         (minFromAlreadySortedByEstimate.get._2, indexOfMin)
-      else (minFromStartingAwaitSortedByEstimate.get._2, -2)
+      else (minFromStartingAwaitSortedByEstimate.get._2, pickingUpFromStartingAwaitMagicN)
     else if (minFromAlreadySortedByEstimate.isEmpty && minFromStartingAwaitSortedByEstimate.isDefined)
-      (minFromStartingAwaitSortedByEstimate.get._2, -2)
+      (minFromStartingAwaitSortedByEstimate.get._2, pickingUpFromStartingAwaitMagicN)
     else if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isEmpty)
       (minFromAlreadySortedByEstimate.get._2, indexOfMin)
     else if(minFromAlreadySortedByEstimate.isEmpty && minFromStartingAwaitSortedByEstimate.isEmpty)

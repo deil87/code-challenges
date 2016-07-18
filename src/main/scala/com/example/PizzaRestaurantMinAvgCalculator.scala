@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success, Try}
 
-object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints with RestaurantOrderingHelper {
+object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints with RestaurantOrderingHelper with MagicNumbers {
   val system = ActorSystem("PizzaRestaurantSystem")
 
   def calculateMinAvgWaitingTime(customerMetas: List[CustomerMeta]): Long = {
@@ -18,8 +18,7 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
     minSum / customerMetas.length
   }
 
-  private val gettingFromStartingAwaitMagicN: Int = -2
-  private val gettingFromRestCustomersMagicN: Int = -3
+
 
   @tailrec
   private def calculateMinSumOfWaitingTime(totalServedTime: Long,
@@ -50,7 +49,7 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
 
     val (bestNext, indexOfFragment) =
       if (startingAwaitOrdByOrderEstimate.isEmpty && alreadyAwaitingCustomersCount == 0L )
-        (futureCustomers.head, gettingFromRestCustomersMagicN) // case when we just getting next of restCustomers
+        (futureCustomers.head, pickingUpFromRestCustomersMagicN) // case when we just getting next of restCustomers
       else {
         val withMinOrderEstimateImpactToOthers = getBestNextWithMinWaitingImpactFrom(alreadyAwaitingCustomersOrderedByOrderEstimate, startingAwaitOrdByOrderEstimate, _.orderEstimate < _.orderEstimate)
 
@@ -91,7 +90,7 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
           else
             alreadyAwaitingCustomersOrderedByOrderEstimate ++ List(startingAwaitOrdByOrderEstimate)
         }
-        else if (indexOfFragment == gettingFromStartingAwaitMagicN) {
+        else if (indexOfFragment == pickingUpFromStartingAwaitMagicN) {
           val from2 = removeElemFrom(startingAwaitOrdByOrderEstimate, bestNext)
           alreadyAwaitingCustomersOrderedByOrderEstimate ++ List(from2)
         } else {
@@ -119,7 +118,7 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
           else
             alreadyAwaitingCustomersOrderedByOrderAwaiting ++ List(startingAwaitOrdByOrderAwaiting)
         }
-        else if (indexOfFragment == gettingFromStartingAwaitMagicN) {
+        else if (indexOfFragment == pickingUpFromStartingAwaitMagicN) {
           val from2 = removeElemFrom(startingAwaitOrdByOrderAwaiting, bestNext)
           alreadyAwaitingCustomersOrderedByOrderAwaiting ++ List(from2)
         } else {
@@ -159,9 +158,9 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints wi
     if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isDefined)
       if (fun(minFromAlreadySortedByEstimate.get._2,minFromStartingAwaitSortedByEstimate.get._2))
         (minFromAlreadySortedByEstimate.get._2, indexOfMin)
-      else (minFromStartingAwaitSortedByEstimate.get._2, gettingFromStartingAwaitMagicN)
+      else (minFromStartingAwaitSortedByEstimate.get._2, pickingUpFromStartingAwaitMagicN)
     else if (minFromAlreadySortedByEstimate.isEmpty && minFromStartingAwaitSortedByEstimate.isDefined)
-      (minFromStartingAwaitSortedByEstimate.get._2, gettingFromStartingAwaitMagicN)
+      (minFromStartingAwaitSortedByEstimate.get._2, pickingUpFromStartingAwaitMagicN)
     else if (minFromAlreadySortedByEstimate.isDefined && minFromStartingAwaitSortedByEstimate.isEmpty)
       (minFromAlreadySortedByEstimate.get._2, indexOfMin)
     else {
