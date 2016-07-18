@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success, Try}
 
-object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints {
+object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints with RestaurantOrderingHelper {
   val system = ActorSystem("PizzaRestaurantSystem")
 
 
@@ -201,16 +201,6 @@ object PizzaRestaurantMinAvgCalculator extends App with RestaurantConstraints {
 
 }
 
-  val fragmentsOrdering = new Ordering[List[(Int, CustomerMeta)]] {
-    override def compare(xs: List[(Int, CustomerMeta)], ys: List[(Int, CustomerMeta)]): Int = {
-      (xs, ys) match {
-        case (Nil, Nil) => 0
-        case (Nil, ys) => 1 // reversed  if one list is empty then another one is returned
-        case (xs, Nil) => -1
-        case (xs, ys) => Ordering[Int].compare(xs.head._1, ys.head._1)
-      }
-    }
-  }
 
   private def getBestFrom(alreadyAwaiting : Array[List[(Int, CustomerMeta)]], startingAwait : List[(Int, CustomerMeta)], fun: (CustomerMeta,CustomerMeta) => Boolean): (CustomerMeta, Int) = {
     // Better use our own implementation of `min` which returns index as well
