@@ -7,28 +7,20 @@ import akka.actor.ActorSystem
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success, Try}
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object PizzaRestaurant extends App {
   val system = ActorSystem("PizzaRestaurantSystem")
 
-  val numberOfCustomers = 100000 // Really popular restaurant!
+  val numberOfCustomers = 10000 // Really popular restaurant!
+
+  // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
+  def randomArrivalTime = Random.nextInt(1000000001)
+
+  def randomPizzaTimeCost = Random.nextInt(1000000000) + 1
 
   val customersMeta = (0 until numberOfCustomers)
     .map(i => CustomersMeta(i, randomArrivalTime, orderEstimate = randomPizzaTimeCost))
     .sortBy(_.arrivalTime).toList
-
-  // Note: randomPizzaTimeCost and randomArrivalTime should be of similar order. If arrival time >> pizza cooking time, Tieu will be bored (and beggar).
-  def randomArrivalTime: Int = {
-    Random.nextInt(1000000001)
-  }
-
-  def randomPizzaTimeCost: Int = {
-    Random.nextInt(1000000000) + 1
-  }
-
-  val tieuActor = system.actorOf(TieuActor.props, "tieuActor")
 
   val customersMetaPredef1 = List(CustomersMeta(0,0, 3), CustomersMeta(1,1, 9), CustomersMeta(2,2, 5))
 
@@ -100,13 +92,15 @@ object PizzaRestaurant extends App {
 
     val waitingDelta = bestNext.orderEstimate + currentCustomer.orderEstimate + currentCustomer.arrivalTime
 
+
+
     calculateMinSumOfWaitingTime(totalServedTime = withCurrentTotalServedTime,
           currentCustomer = bestNext,
           alreadyAwaitingCustomersOrderedByOrderEstimate = {
 
-            val startForeach = System.nanoTime()
-
             val orderEstimate = bestNext.orderEstimate
+
+            val startForeach = System.nanoTime()
 
             alreadyAwaitingCustomersOrderedByOrderEstimate.par.foreach { fs =>
               fs.foreach { case (v, cm) =>
