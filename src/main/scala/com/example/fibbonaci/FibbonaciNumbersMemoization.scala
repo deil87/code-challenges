@@ -6,6 +6,8 @@ import com.example.util.BenchmarkHelper._
 import com.example.util.Memo
 import com.example.util.Memo.==>
 
+import scala.annotation.tailrec
+
 /**
   * It calculates fibb(45) for 113 ms instead of 5,5 s
   */

@@ -8,7 +8,7 @@ package com.example.util
   * @tparam K the keys we should use in cache instead of I
   * @tparam O output of f
   */
-case class Memo[I <% K, K, O](f: I => O) extends (I => O) {
+case class Memo[I, K, O](f: I => O)(implicit i2key: I => K) extends (I => O) {
   import collection.mutable.{Map => Dict}
   type Input = I
   type Key = K
